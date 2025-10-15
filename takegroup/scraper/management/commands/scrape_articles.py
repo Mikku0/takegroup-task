@@ -26,9 +26,6 @@ class Command(BaseCommand):
         'https://galicjaexpress.pl/bmw-e9-30-cs-szczegolowe-informacje-o-osiagach-i-historii-modelu',
         'https://take-group.github.io/example-blog-without-ssr/jak-kroic-piers-z-kurczaka-aby-uniknac-suchych-kawalkow-miesa',
         'https://take-group.github.io/example-blog-without-ssr/co-mozna-zrobic-ze-schabu-oprocz-kotletow-5-zaskakujacych-przepisow',
-        'https://www.pap.pl/aktualnosci/konkurs-chopinowski-vincent-ong-w-grze-nie-jestem-nonszalancki-ale-swiadomy',
-        'https://przegladsportowy.onet.pl/pilka-nozna/reprezentacja-polski/najwyzsza-pora-powiedziec-to-glosno-o-jerzym-brzeczku-fakty-musza-zatanczyc/k9jl954',
-        'https://www.bbc.com/news/articles/c803rmdzjdjo',
     ]
 
     def __init__(self):
