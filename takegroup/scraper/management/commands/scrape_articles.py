@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
 from scraper.models import Article
-import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -8,6 +7,14 @@ import re
 import logging
 import time
 import atexit
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page()
+    page.goto("https://example.com")
+    content = page.content()
+    browser.close()
 
 logger = logging.getLogger(__name__)
 def _safe_quit(self):
@@ -16,7 +23,6 @@ def _safe_quit(self):
             self.service.process.kill()
     except:
         pass
-uc.Chrome.__del__ = _safe_quit
 
 class Command(BaseCommand):
     help = 'Scrape articles from specified URLs'
@@ -36,7 +42,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         total = len(self.URLS)
         
-        self.setup_driver()
         
         atexit.register(self.cleanup_driver)
         
@@ -86,56 +91,27 @@ class Command(BaseCommand):
             self.driver = None
             self.cleanup_done = True
 
-    def setup_driver(self):
-        """Konfiguracja undetected-chromedriver"""
-        try:
-            options = uc.ChromeOptions()
-            options.add_argument('--headless=new')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--window-size=1920,1080')
-            
-            self.driver = uc.Chrome(
-                options=options, 
-                version_main=None,
-                use_subprocess=False
-            )
-            
-            self.stdout.write(self.style.SUCCESS('Driver initialized successfully'))
-        except Exception as e:
-            logger.error(f'Failed to initialize WebDriver: {str(e)}')
-            raise
+    
 
     def scrape_article(self, url):
         try:
-            self.driver.get(url)
-            
-            
-            self.driver.execute_script("return document.readyState") == "complete"
-            
-            page_source = self.driver.page_source
-            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(url)
+                page.wait_for_load_state('networkidle')
+                page_source = page.content()
+                browser.close()
+
             if '403 Forbidden' in page_source or 'Request forbidden' in page_source:
                 logger.error(f'Got 403 error page for {url}')
                 return None
-            
-            if 'Checking your browser' in page_source or 'Just a moment' in page_source:
-                logger.info(f'Cloudflare challenge detected, waiting longer...')
-                time.sleep(10)
-                page_source = self.driver.page_source
-            
+
             soup = BeautifulSoup(page_source, 'html.parser')
-            
             title = self.extract_title(soup)
-            
-            if '403' in title or 'Forbidden' in title or 'Just a moment' in title:
-                logger.warning(f'Article blocked or Cloudflare challenge failed for {url}')
-                return None
-            
             original_content, plain_text = self.extract_content(soup)
             publication_date = self.extract_and_normalize_date(soup, url)
-            
+
             return {
                 'title': title,
                 'original_content': original_content,
@@ -143,9 +119,11 @@ class Command(BaseCommand):
                 'source_url': url,
                 'publication_date': publication_date,
             }
+
         except Exception as e:
             logger.error(f'Error parsing article {url}: {str(e)}')
             return None
+
 
     def extract_title(self, soup):
         title = (soup.find('h1') or 

@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: article_scraper
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d article_scraper"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py scrape_articles &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://user:password123@db:5432/article_scraper
+      - PYTHONUNBUFFERED=1
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_PASSWORD=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@example.com
+
+volumes:
+  postgres_data:

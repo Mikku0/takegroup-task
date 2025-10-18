@@ -7,17 +7,59 @@ Projekt do scrapowania artykułów z różnych źródeł i udostępniania ich pr
 - Python 3.10+
 - PostgreSQL
 - Chrome/Chromium (do headless browsing)
+- Docker i Docker Compose (jeśli chcesz używać kontenerów)
 
-## Instalacja
+## Uruchomienie przez Docker (rekomendowane)
+
+1. Sklonuj repozytorium i przejdź do folderu projektu:
+```bash
+git clone https://github.com/Mikku0/takegroup-task.git
+cd takegroup_task/takegroup
+```
+
+2. Uruchom Docker Desktop, zbuduj obrazy i uruchom kontenery:
+```bash
+docker-compose build --no-cache
+docker-compose up
+```
+
+3. Serwer Django będzie dostępny na:
+```
+http://localhost:8000
+```
+
+4. API endpoints działają przez przeglądarkę (port 8000 z kontenera jest przekierowywany) lub `curl`:
+
+```
+http://localhost:8000/articles/
+http://localhost:8000/articles/1/
+http://localhost:8000/articles/?source=galicjaexpress.pl
+```
+
+5. Sprawdzenie bazy danych Postgres (ewentualnie):
+```bash
+docker exec -it takegroup-db-1 psql -U user -d article_scraper
+```
+
+W środku możesz używać standardowych komend SQL, np.:
+```sql
+SELECT * FROM scraper_article;
+```
+
+6. Scrapowanie artykułów (w kontenerze web, ewentualnie):
+```bash
+docker-compose exec takegroup-web-1 python manage.py scrape_articles
+```
+
+## Instalacja lokalna (bez Dockera)
 
 1. Sklonuj repo i wejdź do folderu projektu
 
 2. Stwórz i aktywuj venv:
 ```bash
 python -m venv venv
-source venv/bin/activate  # na Linuxie/Mac
-
-venv\Scripts\activate  # na Windowsie
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
 ```
 
 3. Zainstaluj zależności:
@@ -25,14 +67,14 @@ venv\Scripts\activate  # na Windowsie
 pip install -r requirements.txt
 ```
 
-3. Utwórz bazę danych w PostgreSQL:
+4. Utwórz bazę danych w PostgreSQL:
 ```sql
 CREATE DATABASE article_scraper;
 CREATE USER user WITH PASSWORD 'password123';
 GRANT ALL PRIVILEGES ON DATABASE article_scraper TO user;
 ```
 
-4. Uruchom migracje:
+5. Uruchom migracje:
 ```bash
 cd takegroup
 python manage.py migrate
@@ -41,20 +83,11 @@ python manage.py migrate
 ## Jak używać
 
 ### Scrapowanie artykułów
-
-Żeby zescrapować artykuły wystarczy odpalić:
 ```bash
 python manage.py scrape_articles
 ```
 
-Komenda automatycznie:
-- Pobierze artykuły ze wszystkich źródeł
-- Sprawdzi czy dany URL już nie istnieje w bazie
-- Zapisze nowe artykuły
-- Pokaże progress w terminalu
-
 ### Uruchomienie serwera
-
 ```bash
 python manage.py runserver
 ```
@@ -64,25 +97,19 @@ Serwer wystartuje na `http://localhost:8000`
 ## API Endpoints
 
 ### Wszystkie artykuły
-```bash
+```
 GET http://localhost:8000/articles/
 ```
 
-Zwraca listę wszystkich zescrapowanych artykułów.
-
 ### Pojedynczy artykuł
-```bash
+```
 GET http://localhost:8000/articles/1/
 ```
 
-Zwraca szczegóły artykułu o danym ID.
-
 ### Filtrowanie po źródle
-```bash
-GET http://localhost:8000/articles/?source=galicjaexpress
 ```
-
-Znajdzie wszystkie artykuły z URLi zawierających "galicjaexpress".
+GET http://localhost:8000/articles/?source=galicjaexpress.pl
+```
 
 ### Przykładowa odpowiedź:
 ```json
@@ -100,7 +127,6 @@ Znajdzie wszystkie artykuły z URLi zawierających "galicjaexpress".
 ```
 
 ## Struktura projektu
-
 ```
 takegroup/
 ├── scraper/              # Główna aplikacja
@@ -118,6 +144,7 @@ takegroup/
 ## Szczegóły techniczne
 
 ### Parsowanie dat
+
 Scraper radzi sobie z różnymi formatami dat:
 - ISO format: `2024-10-14T12:30:00`
 - Polski format: `14 października 2024`
@@ -126,8 +153,6 @@ Scraper radzi sobie z różnymi formatami dat:
 
 Wszystkie są konwertowane do: `dd.mm.yyyy HH:mm:ss`
 
-### Obsługa Cloudflare
-Projekt używa `undetected-chromedriver` żeby ominąć zabezpieczenia Cloudflare. Jeśli strona ma challenge, scraper automatycznie czeka dłużej.
-
 ### Walidacja
+
 Przed zapisem każdy URL jest sprawdzany czy już nie istnieje w bazie. Duplikaty są pomijane.

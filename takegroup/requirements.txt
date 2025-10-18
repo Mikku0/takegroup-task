@@ -8,3 +8,4 @@ lxml==5.1.0
 undetected-chromedriver>=3.5.0
 setuptools>=68.0.0
 dj-database-url
+playwright==1.55.0
